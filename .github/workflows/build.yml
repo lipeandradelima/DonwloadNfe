@@ -1,0 +1,93 @@
+name: Build desktop apps
+
+on:
+  push:
+    tags:
+      - 'v*'     # cria Release quando houver tag (ex.: v1.0.0)
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-13, macos-14]  # Win, mac Intel, mac Apple Silicon
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'  # cache do pip
+      # (setup-python docs) :contentReference[oaicite:1]{index=1}
+
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      # --- Windows (.exe) ---
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          pyinstaller --noconsole --onefile --name RenomeadorNFe testeUnificado.py
+          # Renomeia artefato com info do SO
+          ren dist\RenomeadorNFe.exe RenomeadorNFe-windows.exe
+
+      # --- macOS (.app + .dmg) ---
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          pyinstaller --windowed --onefile --name RenomeadorNFe testeUnificado.py
+          # Cria DMG simples a partir do .app
+          APP_PATH="dist/RenomeadorNFe.app"
+          DMG_NAME="RenomeadorNFe-${{ runner.os }}.dmg"
+          hdiutil create "${DMG_NAME}" -volname "RenomeadorNFe" -srcfolder "${APP_PATH}" -ov -format UDZO
+          # Mantém também o .app compactado (útil pra notarizar depois)
+          ditto -c -k --sequesterRsrc --keepParent "${APP_PATH}" "RenomeadorNFe-${{ runner.os }}.zip"
+      # (exemplo de hdiutil -srcfolder) :contentReference[oaicite:2]{index=2}
+
+      # --- Upload de artifacts em todo push ---
+      - name: Upload artifacts (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: RenomeadorNFe-windows
+          path: |
+            RenomeadorNFe-windows.exe
+      # (artifacts docs) :contentReference[oaicite:3]{index=3}
+
+      - name: Upload artifacts (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: RenomeadorNFe-${{ runner.os }}
+          path: |
+            RenomeadorNFe-${{ runner.os }}.dmg
+            RenomeadorNFe-${{ runner.os }}.zip
+
+  release:
+    name: Release on tag
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/**/*
