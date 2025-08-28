@@ -1,0 +1,20 @@
+# Ambientes Virtuais
+venv/
+*.venv/
+env/
+.env
+
+# Arquivos de Cache do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Arquivos do PyInstaller
+build/
+dist/
+*.spec
+
+# Arquivos de IDEs
+.idea/
+.vscode/
