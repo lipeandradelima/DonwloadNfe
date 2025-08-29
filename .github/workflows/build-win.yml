@@ -32,7 +32,7 @@ jobs:
       - name: Build Executable
         run: |
           pyinstaller --noconsole --onefile --name RenomeadorNFe testeUnificado.py
-          ren dist\RenomeadorNFe.exe RenomeadorNFe-Windows.exe
+          move dist\RenomeadorNFe.exe RenomeadorNFe-Windows.exe
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
