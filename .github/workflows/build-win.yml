@@ -11,7 +11,7 @@ on:
 jobs:
   build-win:
     name: Build Windows Executable
-    runs-on: windows
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
